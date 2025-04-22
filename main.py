@@ -1,4 +1,5 @@
 # main.py
+import random
 import pygame
 from models.board_model import ChessBoard
 from ui.gui import GUI
@@ -14,9 +15,12 @@ def main():
     board = ChessBoard()  
     # Ví dụ: board.positions là một dict chứa thông tin vị trí quân cờ, dạng {(row, col): (color, piece)}
     # VD: {(0, 0): ("white", "rook"), (0, 1): ("white", "knight"), ...}
-    controller = GameController(board)
-    # Khởi tạo giao diện GUI, truyền cả screen và board vào (để vẽ dựa trên trạng thái bàn cờ)
-    gui = GUI(screen, board)
+     # 🎮 Random vai trò: True = người cầm trắng, False = người cầm đen
+    player_is_white = random.choice([True, False])
+    print("Người chơi cầm", "trắng" if player_is_white else "đen")
+    
+    gui = GUI(screen, board, player_is_white)
+    controller = GameController(board, gui, player_is_white)
     
     clock = pygame.time.Clock()
     running = True
@@ -33,6 +37,9 @@ def main():
         controller.ai_move_if_needed()
         # Vẽ giao diện
         gui.render(controller.highlighted_square)
+        if controller.awaiting_promotion_choice:
+            gui.draw_promotion_overlay()
+
         pygame.display.flip()  # Cập nhật màn hình
         
         clock.tick(60)  # Giới hạn 60 FPS

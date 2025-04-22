@@ -2,11 +2,12 @@ import pygame
 import os
 
 class GUI:
-    def __init__(self, screen, board):
+    def __init__(self, screen, board, player_is_white):
         self.screen = screen
         self.board = board
         self.tile_size = 75  # Kích thước mỗi ô cờ
         self.piece_images = {}
+        self.player_is_white = player_is_white  # is_flipped: True nếu người chơi đang ở phía trên (cầm quân đen), để lật bàn cờ xuống dướ
         self.load_images()
 
     def load_images(self):
@@ -25,6 +26,13 @@ class GUI:
                     self.piece_images[f"{color}{piece}"] = image
                 except Exception as e:
                     print(f"Error loading {path}: {e}")
+    
+    def gui_coords(self, row):
+        """
+        Chuyển row bàn cờ (0–7) thành vị trí để vẽ GUI.
+        Nếu is_flipped=True (người chơi cầm đen) → đảo chiều vẽ
+        """
+        return (7 - row) if self.player_is_white else row
 
     def draw_board(self):
         """
@@ -48,7 +56,7 @@ class GUI:
             image = self.piece_images.get(f"{color}{piece}")
             if image:
                 row, col = position
-                draw_row = 7 - row  # ✅ Đảo hàng để vẽ đúng chiều
+                draw_row = self.gui_coords(row)  # ✅ Đảo hàng để vẽ đúng chiều
                 self.screen.blit(image, (col * self.tile_size, draw_row * self.tile_size))
 
     def draw_highlights(self, squares):
@@ -58,7 +66,7 @@ class GUI:
         - Vòng tròn nếu là ô có quân địch
         """
         for row, col in squares:
-            draw_row = 7 - row  # ✅ Đảo hàng
+            draw_row = self.gui_coords(row) # ✅ Đảo hàng
             center_x = col * self.tile_size + self.tile_size // 2
             center_y = draw_row * self.tile_size + self.tile_size // 2
 
@@ -91,3 +99,51 @@ class GUI:
         if highlighted_square:
             self.draw_highlights(highlighted_square)
         pygame.display.flip()
+    
+    def handle_promotion_menu(self, mouse_pos):
+        """
+        Hiển thị menu chọn quân khi phong tốt (và xử lý chọn).
+        """
+        print("👑 Hiển thị menu phong tốt...")
+        menu_rects = []
+        choices = ['q', 'r', 'b', 'n']
+        base_x, base_y = 250, 150
+
+        for i, code in enumerate(choices):
+            rect = pygame.Rect(base_x, base_y + i * 80, 75, 75)
+            print(f"🟦 Vẽ ô {code.upper()} tại {rect}")
+            pygame.draw.rect(self.screen, (220, 220, 220), rect)
+            pygame.draw.rect(self.screen, (0, 0, 0), rect, 2)
+            piece_name = {'q': 'queen', 'r': 'rook', 'b': 'bishop', 'n': 'knight'}[code]
+            image = self.piece_images.get(f"white{piece_name}")
+            if image:
+                self.screen.blit(image, (base_x, base_y + i * 80))
+            menu_rects.append((rect, code))
+
+        pygame.display.flip()
+
+        for rect, code in menu_rects:
+            if rect.collidepoint(mouse_pos):
+                print(f"✅ Click trúng {code.upper()} → chọn phong")
+                return code
+
+        print("❌ Click ngoài menu phong tốt")
+        return None
+
+
+    def draw_promotion_overlay(self):
+        """
+        Vẽ lại popup phong tốt (dùng khi đang chờ chọn quân).
+        """
+        choices = ['q', 'r', 'b', 'n']
+        base_x, base_y = 250, 150
+
+        for i, code in enumerate(choices):
+            rect = pygame.Rect(base_x, base_y + i * 80, 75, 75)
+            pygame.draw.rect(self.screen, (220, 220, 220), rect)
+            pygame.draw.rect(self.screen, (0, 0, 0), rect, 2)
+            piece_name = {'q': 'queen', 'r': 'rook', 'b': 'bishop', 'n': 'knight'}[code]
+            image = self.piece_images.get(f"white{piece_name}")
+            if image:
+                self.screen.blit(image, (base_x, base_y + i * 80))
+
