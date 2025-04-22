@@ -4,8 +4,17 @@ import pygame
 from models.board_model import ChessBoard
 from ui.gui import GUI
 from src.chess_controller import GameController
+from ui.menu import show_main_menu
 
 def main():
+    while True:
+        choice = show_main_menu()
+        if choice == "QUIT":
+            break
+        elif choice == "PLAY":
+            start_game()
+
+def start_game():
     pygame.init()
     # Khởi tạo cửa sổ game (ví dụ 600x600 pixel)
     screen = pygame.display.set_mode((600, 600))

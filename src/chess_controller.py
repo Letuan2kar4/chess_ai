@@ -1,4 +1,5 @@
 import chess
+import pygame.mixer
 from engine.minimax import get_best_move_alpha_beta
 
 class GameController:
@@ -13,6 +14,10 @@ class GameController:
         self.player_color = 'white' if player_is_white else 'black'
         self.player_is_white = player_is_white
         self.is_flipped = not player_is_white
+
+        pygame.mixer.init()
+        self.move_sound = pygame.mixer.Sound("assets/sounds/move-self.mp3")
+        self.capture_sound = pygame.mixer.Sound("assets/sounds/capture.mp3")
 
     def handle_click(self, mouse_pos):
         # 👑 Nếu đang chờ người chơi chọn quân để phong
@@ -62,9 +67,19 @@ class GameController:
                 return
             
             if move in self.board.get_board().legal_moves:
-                    self.board.make_move(move)
-                    self.selected_square = None
-                    self.highlighted_square = []
+                # Kiểm tra nếu có quân ở ô đích → là nước ăn quân
+                is_capture = self.board.get_board().is_capture(move)
+
+                self.board.make_move(move)
+
+                # Phát âm thanh
+                if is_capture:
+                    self.capture_sound.play()
+                else:
+                    self.move_sound.play()
+
+                self.selected_square = None
+                self.highlighted_square = []
             else:
                 print("🚫 Nước đi không hợp lệ:", move)
                 self.selected_square = None
@@ -80,7 +95,12 @@ class GameController:
             try:
                 move = chess.Move.from_uci(move_uci)
                 if move in self.board.get_board().legal_moves:
+                    is_capture = self.board.get_board().is_capture(move)
                     self.board.make_move(move)
+                    if is_capture:
+                        self.capture_sound.play()
+                    else:
+                        self.move_sound.play()
                     print("✅ Phong tốt thành công:", move)
                 else:
                     print("❌ Move phong tốt không hợp lệ:", move)
