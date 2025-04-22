@@ -33,6 +33,7 @@ class GameController:
         row = mouse_pos[1] // 75 if self.is_flipped else 7 - (mouse_pos[1] // 75)
         col = mouse_pos[0] // 75
         clicked_square = (row, col)
+
         print(f"✅ Clicked at pixel {mouse_pos} → square {clicked_square}")
 
         # 👆 Click lại cùng 1 ô → bỏ chọn
@@ -146,6 +147,7 @@ class GameController:
     def convert_to_uci(self, start, end):
         def to_chess(sq):
             return chr(ord('a') + sq[1]) + str(sq[0] + 1)
+
         return to_chess(start) + to_chess(end)
 
     def ai_move_if_needed(self):
