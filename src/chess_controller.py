@@ -129,10 +129,29 @@ class GameController:
         self.highlighted_square = []
 
     def is_promotion_move(self, start, end):
-        """Kiểm tra nếu là tốt đi đến hàng cuối"""
-        row, _ = end
+        """Kiểm tra nếu là nước phong tốt CHÍNH XÁC theo màu quân (đen hoặc trắng)"""
+        to_row, _ = end
         piece = self.board.positions.get(start)
-        return piece and piece[1] == 'pawn' and (row == 0 or row == 7)
+
+        if not piece or piece[1] != 'pawn':
+            return False
+
+        color = piece[0]
+
+        # Trắng phong ở hàng 7, đen phong ở hàng 0
+        if (color == 'white' and to_row != 7) or (color == 'black' and to_row != 0):
+            return False
+
+        # Check xem có move hợp lệ dạng phong cấp không
+        move_uci = self.convert_to_uci(start, end)
+        for suffix in ['q', 'r', 'b', 'n']:
+            move = chess.Move.from_uci(move_uci + suffix)
+            if move in self.board.get_board().legal_moves:
+                return True
+
+        return False
+
+
 
     def get_legal_targets(self, square):
         row, col = square
