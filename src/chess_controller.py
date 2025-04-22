@@ -15,6 +15,10 @@ class GameController:
         self.player_is_white = player_is_white
         self.is_flipped = not player_is_white
 
+        self.last_move_time = 0
+        self.ai_move_delay = 1000
+        self.ai_move_pending = False
+
         pygame.mixer.init()
         self.move_sound = pygame.mixer.Sound("assets/sounds/move-self.mp3")
         self.capture_sound = pygame.mixer.Sound("assets/sounds/capture.mp3")
@@ -71,6 +75,15 @@ class GameController:
                 is_capture = self.board.get_board().is_capture(move)
 
                 self.board.make_move(move)
+
+                from_row = chess.square_rank(move.from_square)
+                from_col = chess.square_file(move.from_square)
+                to_row = chess.square_rank(move.to_square)
+                to_col = chess.square_file(move.to_square)
+                self.gui.last_move = (from_row, from_col, to_row, to_col)
+
+                self.last_move_time = pygame.time.get_ticks()
+                self.ai_move_pending = True
 
                 # Phát âm thanh
                 if is_capture:
@@ -137,6 +150,19 @@ class GameController:
 
     def ai_move_if_needed(self):
         opponent_turn = chess.BLACK if self.player_color == 'white' else chess.WHITE
-        if self.board.get_board().turn == opponent_turn:
-            move = get_best_move_alpha_beta(self.board.get_board(), depth=3)
-            self.board.make_move(move)
+        current_time = pygame.time.get_ticks()
+
+        if self.ai_move_pending and self.board.get_board().turn == opponent_turn:
+            if current_time - self.last_move_time >= self.ai_move_delay:
+                move = get_best_move_alpha_beta(self.board.get_board(), depth=3)
+
+                self.board.make_move(move)
+
+                from_row = chess.square_rank(move.from_square)
+                from_col = chess.square_file(move.from_square)
+                to_row = chess.square_rank(move.to_square)
+                to_col = chess.square_file(move.to_square)
+                self.gui.last_move = (from_row, from_col, to_row, to_col)
+
+                self.last_move_time = current_time
+                self.ai_move_pending = False

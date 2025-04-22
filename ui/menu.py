@@ -3,12 +3,12 @@ import pygame
 def show_main_menu():
     pygame.init()
     screen = pygame.display.set_mode((600, 600))
-    pygame.display.set_caption("Chess Game Menu")
+    pygame.display.set_caption("Chess Game")
 
     # Colors
     WHITE = (255, 255, 255)
     BLACK = (0, 0, 0)
-    GRAY = (128, 128, 128)
+    BACKGROUND = (240, 240, 240)
 
     # Button dimensions
     button_width = 200
@@ -50,7 +50,7 @@ def show_main_menu():
                     return "QUIT"
 
         # Draw
-        screen.fill(WHITE)
+        screen.fill(BACKGROUND)
 
         # Draw title
         title_text = title_font.render("Chess Game", True, BLACK)

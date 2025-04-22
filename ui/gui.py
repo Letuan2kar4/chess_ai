@@ -9,6 +9,7 @@ class GUI:
         self.piece_images = {}
         self.player_is_white = player_is_white  # is_flipped: True nếu người chơi đang ở phía trên (cầm quân đen), để lật bàn cờ xuống dướ
         self.load_images()
+        self.last_move = None
 
     def load_images(self):
         """
@@ -37,7 +38,7 @@ class GUI:
     def draw_board(self):
         """
         Vẽ bàn cờ 8x8, trắng và đen xen kẽ.
-        Đảo chiều để quân trắng ở dưới.
+        Sau khi vẽ từng ô → vẽ thêm viền đen mỏng.
         """
         colors = [(240, 217, 181), (181, 136, 99)]  # Màu sáng và tối
         for row in range(8):
@@ -45,7 +46,28 @@ class GUI:
                 draw_row = 7 - row  # ✅ Đảo hàng để vẽ từ dưới lên
                 color = colors[(row + col) % 2]
                 rect = pygame.Rect(col * self.tile_size, draw_row * self.tile_size, self.tile_size, self.tile_size)
+
+                # Vẽ ô nền
                 pygame.draw.rect(self.screen, color, rect)
+
+    def highlight_last_move(self):
+        if not self.last_move:
+            return
+
+        from_row, from_col, to_row, to_col = self.last_move
+        highlight_color = (255, 255, 153)
+
+        for row, col in [(from_row, from_col), (to_row, to_col)]:
+            draw_row = self.gui_coords(row)
+            x = col * self.tile_size
+            y = draw_row * self.tile_size
+
+            # Tạo 1 surface trong suốt để vẽ highlight mờ
+            highlight_surface = pygame.Surface((self.tile_size, self.tile_size))
+            highlight_surface.set_alpha(100)  # Độ mờ (0 là trong suốt, 255 là đậm)
+            highlight_surface.fill(highlight_color)
+
+            self.screen.blit(highlight_surface, (x, y))
 
     def draw_pieces(self):
         """
@@ -57,7 +79,9 @@ class GUI:
             if image:
                 row, col = position
                 draw_row = self.gui_coords(row)  # ✅ Đảo hàng để vẽ đúng chiều
-                self.screen.blit(image, (col * self.tile_size, draw_row * self.tile_size))
+                x = col * self.tile_size + (self.tile_size - image.get_width()) // 2
+                y = draw_row * self.tile_size + (self.tile_size - image.get_height()) // 2
+                self.screen.blit(image, (x, y))
 
     def draw_highlights(self, squares):
         """
@@ -95,6 +119,7 @@ class GUI:
         Gọi hàm vẽ tổng: bàn cờ + quân cờ + highlight
         """
         self.draw_board()
+        self.highlight_last_move()
         self.draw_pieces()
         if highlighted_square:
             self.draw_highlights(highlighted_square)
