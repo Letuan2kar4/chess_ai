@@ -3,7 +3,7 @@ import pygame.mixer
 from engine.minimax import get_best_move_alpha_beta
 
 class GameController:
-    def __init__(self, board, gui, player_is_white=True):
+    def __init__(self, board, gui, player_is_white):
         self.board = board
         self.gui = gui
         self.selected_square = None
@@ -17,7 +17,7 @@ class GameController:
 
         self.last_move_time = 0
         self.ai_move_delay = 1000
-        self.ai_move_pending = False
+        self.ai_move_pending = False if self.player_is_white else True
 
         pygame.mixer.init()
         self.move_sound = pygame.mixer.Sound("assets/sounds/move-self.mp3")
@@ -175,7 +175,7 @@ class GameController:
 
         if self.ai_move_pending and self.board.get_board().turn == opponent_turn:
             if current_time - self.last_move_time >= self.ai_move_delay:
-                move = get_best_move_alpha_beta(self.board.get_board(), depth=3)
+                move = get_best_move_alpha_beta(self.board.get_board(), depth = 6)
 
                 self.board.make_move(move)
 
