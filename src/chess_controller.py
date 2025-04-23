@@ -16,7 +16,7 @@ class GameController:
         self.is_flipped = not player_is_white
 
         self.last_move_time = 0
-        self.ai_move_delay = 1000
+        self.ai_move_delay = 0
         self.ai_move_pending = False if self.player_is_white else True
 
         pygame.mixer.init()
@@ -128,6 +128,7 @@ class GameController:
         self.awaiting_promotion_choice = False
         self.selected_square = None
         self.highlighted_square = []
+        self.ai_move_pending = True
 
     def is_promotion_move(self, start, end):
         """Kiểm tra nếu là nước phong tốt CHÍNH XÁC theo màu quân (đen hoặc trắng)"""
@@ -175,7 +176,7 @@ class GameController:
 
         if self.ai_move_pending and self.board.get_board().turn == opponent_turn:
             if current_time - self.last_move_time >= self.ai_move_delay:
-                move = get_best_move_alpha_beta(self.board.get_board(), depth = 6)
+                move = get_best_move_alpha_beta(self.board.get_board(), depth = 4)
 
                 self.board.make_move(move)
 
