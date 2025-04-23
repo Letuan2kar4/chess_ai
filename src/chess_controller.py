@@ -22,6 +22,7 @@ class GameController:
         pygame.mixer.init()
         self.move_sound = pygame.mixer.Sound("assets/sounds/move-self.mp3")
         self.capture_sound = pygame.mixer.Sound("assets/sounds/capture.mp3")
+        self.check_sound = pygame.mixer.Sound("assets/sounds/move-check.mp3")
 
     def handle_click(self, mouse_pos):
         # 👑 Nếu đang chờ người chơi chọn quân để phong
@@ -76,6 +77,10 @@ class GameController:
                 is_capture = self.board.get_board().is_capture(move)
 
                 self.board.make_move(move)
+
+                # 🔔 Kiểm tra nếu nước đi khiến đối thủ bị chiếu
+                if self.board.get_board().is_check():
+                    self.check_sound.play()
 
                 from_row = chess.square_rank(move.from_square)
                 from_col = chess.square_file(move.from_square)
@@ -153,8 +158,6 @@ class GameController:
 
         return False
 
-
-
     def get_legal_targets(self, square):
         row, col = square
         from_sq = chess.square(col, row)
@@ -176,9 +179,12 @@ class GameController:
 
         if self.ai_move_pending and self.board.get_board().turn == opponent_turn:
             if current_time - self.last_move_time >= self.ai_move_delay:
-                move = get_best_move_alpha_beta(self.board.get_board(), depth = 4)
 
+                move = get_best_move_alpha_beta(self.board.get_board(), depth=4)
                 self.board.make_move(move)
+
+                if self.board.get_board().is_check():
+                    self.check_sound.play()
 
                 from_row = chess.square_rank(move.from_square)
                 from_col = chess.square_file(move.from_square)

@@ -1,5 +1,6 @@
 import pygame
 import os
+import chess
 
 class GUI:
     def __init__(self, screen, board, player_is_white):
@@ -69,6 +70,19 @@ class GUI:
 
             self.screen.blit(highlight_surface, (x, y))
 
+    def highlight_check(self, board):
+        if board.is_check():
+            king_square = board.king(board.turn)
+            if king_square is not None:
+                row = chess.square_rank(king_square)
+                col = chess.square_file(king_square)
+                draw_row = self.gui_coords(row)
+
+                surface = pygame.Surface((self.tile_size, self.tile_size), pygame.SRCALPHA)
+                red_color = (255, 0, 0, 100)  # Đỏ, độ trong suốt = 100/255
+                pygame.draw.rect(surface, red_color, surface.get_rect())
+                self.screen.blit(surface, (col * self.tile_size, draw_row * self.tile_size))
+
     def draw_pieces(self):
         """
         Dựa trên board.positions để vẽ quân cờ đúng vị trí.
@@ -121,10 +135,13 @@ class GUI:
         self.draw_board()
         self.highlight_last_move()
         self.draw_pieces()
+
         if highlighted_square:
             self.draw_highlights(highlighted_square)
         pygame.display.flip()
-    
+
+        self.highlight_check(self.board.get_board())
+
     def handle_promotion_menu(self, mouse_pos):
         """
         Hiển thị menu chọn quân khi phong tốt (và xử lý chọn).
@@ -171,4 +188,3 @@ class GUI:
             image = self.piece_images.get(f"white{piece_name}")
             if image:
                 self.screen.blit(image, (base_x, base_y + i * 80))
-

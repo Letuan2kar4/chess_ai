@@ -16,12 +16,14 @@ def main():
 
 def start_game():
     pygame.init()
-    # Khởi tạo cửa sổ game (ví dụ 600x600 pixel)
+
+    # Khởi tạo cửa sổ game
     screen = pygame.display.set_mode((600, 600))
     pygame.display.set_caption("Tuấn Lê 2kar4 và Cờ vua")
     
     # Khởi tạo object bàn cờ; bạn cần định nghĩa lớp ChessBoard trong models/board_model.py
-    board = ChessBoard()  
+    board = ChessBoard()
+
     # Ví dụ: board.positions là một dict chứa thông tin vị trí quân cờ, dạng {(row, col): (color, piece)}
     # VD: {(0, 0): ("white", "rook"), (0, 1): ("white", "knight"), ...}
      # 🎮 Random vai trò: True = người cầm trắng, False = người cầm đen
@@ -33,6 +35,7 @@ def start_game():
     
     clock = pygame.time.Clock()
     running = True
+
     while running:
         # Xử lý sự kiện
         for event in pygame.event.get():
@@ -54,7 +57,6 @@ def start_game():
         clock.tick(60)  # Giới hạn 60 FPS
     
     pygame.quit()
-     
 
 if __name__ == '__main__':
     main()
