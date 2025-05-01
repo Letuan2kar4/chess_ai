@@ -1,7 +1,7 @@
 import chess
 
 
-def pawns_mg(board, square):
+def pawns_mg(board):
     """
     Đánh giá đặc trưng pawn trong giai đoạn middle game cho 1 ô.
     Trả về điểm số dựa trên các tiêu chí:
@@ -13,44 +13,44 @@ def pawns_mg(board, square):
         - weak_unopposed
         - blocked
     """
-    piece = board.piece_at(square)
-    if not piece or piece.piece_type != chess.PAWN:
-        return 0
+    for square in chess.SQUARES:
+        piece = board.piece_at(square)
+        if not piece or piece.piece_type != chess.PAWN:
+            return 0
 
-    color = piece.color
-    sign = 1 if color == chess.WHITE else -1
+        color = piece.color
+        sign = 1 if color == chess.WHITE else -1
+        score = 0
 
-    score = 0
+        # Doubled Isolated
+        if doubled_isolated(board, square):
+            score -= sign * 8
+        # Isolated
+        elif isolated(board, square):
+            score -= sign * 4
+        # Backward
+        elif backward(board, square):
+            score -= sign * 7
 
-    # Doubled Isolated
-    if doubled_isolated(board, square):
-        score -= sign * 11
-    # Isolated
-    elif isolated(board, square):
-        score -= sign * 5
-    # Backward
-    elif backward(board, square):
-        score -= sign * 9
+        # Doubled
+        score -= sign * 8 * doubled(board, square)
 
-    # Doubled
-    score -= sign * 11 * doubled(board, square)
+        # Connected
+        if connected(board, square):
+            score += sign * connected_bonus(board, square)
 
-    # Connected
-    if connected(board, square):
-        score += sign * connected_bonus(board, square)
+        # Weak Unopposed
+        score -= sign * 10 * weak_unopposed_pawn(board, square)
 
-    # Weak Unopposed
-    score -= sign * 13 * weak_unopposed_pawn(board, square)
-
-    # Blocked
-    blocked_level = blocked(board, square)  # 0, 1 hoặc 2
-    penalties = [0, 11, 3]
-    score -= sign * penalties[blocked_level]
+        # Blocked
+        blocked_level = blocked(board, square)  # 0, 1 hoặc 2
+        penalties = [0, 8, 2]
+        score -= sign * penalties[blocked_level]
 
     return score
 
 
-def pawns_eg(board, square):
+def pawns_eg(board):
     """
     Đánh giá đặc trưng pawn trong giai đoạn endgame cho 1 ô.
     Bao gồm các tiêu chí:
@@ -63,49 +63,48 @@ def pawns_eg(board, square):
         - weak_lever
         - blocked
     """
-    piece = board.piece_at(square)
-    if not piece or piece.piece_type != chess.PAWN:
-        return 0
-
-    color = piece.color
-    sign = 1 if color == chess.WHITE else -1
-
     score = 0
+    for square in chess.SQUARES:
+        piece = board.piece_at(square)
+        if not piece or piece.piece_type != chess.PAWN:
+            return 0
 
-    rank = (
-        chess.square_rank(square)
-        if color == chess.WHITE
-        else 7 - chess.square_rank(square)
-    )
+        color = piece.color
+        sign = 1 if color == chess.WHITE else -1
+        rank = (
+            chess.square_rank(square)
+            if color == chess.WHITE
+            else 7 - chess.square_rank(square)
+        )
 
-    # Doubled Isolated
-    if doubled_isolated(board, square):
-        score -= sign * 56
-    # Isolated
-    elif isolated(board, square):
-        score -= sign * 15
-    # Backward
-    elif backward(board, square):
-        score -= sign * 24
+        # Doubled Isolated
+        if doubled_isolated(board, square):
+            score -= sign * 45
+        # Isolated
+        elif isolated(board, square):
+            score -= sign * 12
+        # Backward
+        elif backward(board, square):
+            score -= sign * 19
 
-    # Doubled
-    score -= sign * 56 * doubled(board, square)
+        # Doubled
+        score -= sign * 45 * doubled(board, square)
 
-    # Connected (bonus nhân thêm hệ số tùy rank)
-    if connected(board, square):
-        connected_bonus_score = connected_bonus(board, square)
-        score += sign * (connected_bonus_score * (rank - 3) // 4)
+        # Connected (bonus nhân thêm hệ số tùy rank)
+        if connected(board, square):
+            connected_bonus_score = connected_bonus(board, square)
+            score += sign * (connected_bonus_score * (rank - 3) // 4)
 
-    # Weak Unopposed
-    score -= sign * 27 * weak_unopposed_pawn(board, square)
+        # Weak Unopposed
+        score -= sign * 22 * weak_unopposed_pawn(board, square)
 
-    # Weak Lever
-    score -= sign * 56 * weak_lever(board, square)
+        # Weak Lever
+        score -= sign * 45 * weak_lever(board, square)
 
-    # Blocked
-    blocked_level = blocked(board, square)  # 0, 1 hoặc 2
-    penalties = [0, -4, 4]
-    score += sign * penalties[blocked_level]
+        # Blocked
+        blocked_level = blocked(board, square)  # 0, 1 hoặc 2
+        penalties = [0, -3, 3]
+        score += sign * penalties[blocked_level]
 
     return score
 

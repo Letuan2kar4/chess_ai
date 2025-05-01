@@ -1,6 +1,7 @@
 import chess
 import pygame.mixer
-from engine.minimax import get_best_move_alpha_beta
+from engine.minimax import get_best_move
+
 
 class GameController:
     def __init__(self, board, gui, player_is_white):
@@ -10,8 +11,8 @@ class GameController:
         self.highlighted_square = []
         self.promotion_pending = None
         self.awaiting_promotion_choice = False
-        
-        self.player_color = 'white' if player_is_white else 'black'
+
+        self.player_color = "white" if player_is_white else "black"
         self.player_is_white = player_is_white
         self.is_flipped = not player_is_white
 
@@ -55,11 +56,14 @@ class GameController:
                 # 🐞 DEBUG THÊM TOÀN BỘ CÁC NƯỚC ĐI HỢP LỆ
                 print("📋 Tất cả nước đi hợp lệ tại thời điểm hiện tại:")
                 for move in self.board.get_board().legal_moves:
-                    print("♟️", move.uci(), f"(from {move.from_square} to {move.to_square})")
+                    print(
+                        "♟️",
+                        move.uci(),
+                        f"(from {move.from_square} to {move.to_square})",
+                    )
 
             else:
                 print("🚫 Không phải quân bạn hoặc không có quân")
-
 
         # 🏹 Nếu đã chọn quân → thử đi đến clicked_square
         else:
@@ -71,7 +75,7 @@ class GameController:
                 self.promotion_pending = (self.selected_square, clicked_square)
                 self.awaiting_promotion_choice = True
                 return
-            
+
             if move in self.board.get_board().legal_moves:
                 # Kiểm tra nếu có quân ở ô đích → là nước ăn quân
                 is_capture = self.board.get_board().is_capture(move)
@@ -140,18 +144,18 @@ class GameController:
         to_row, _ = end
         piece = self.board.positions.get(start)
 
-        if not piece or piece[1] != 'pawn':
+        if not piece or piece[1] != "pawn":
             return False
 
         color = piece[0]
 
         # Trắng phong ở hàng 7, đen phong ở hàng 0
-        if (color == 'white' and to_row != 7) or (color == 'black' and to_row != 0):
+        if (color == "white" and to_row != 7) or (color == "black" and to_row != 0):
             return False
 
         # Check xem có move hợp lệ dạng phong cấp không
         move_uci = self.convert_to_uci(start, end)
-        for suffix in ['q', 'r', 'b', 'n']:
+        for suffix in ["q", "r", "b", "n"]:
             move = chess.Move.from_uci(move_uci + suffix)
             if move in self.board.get_board().legal_moves:
                 return True
@@ -164,25 +168,24 @@ class GameController:
         all_moves = list(self.board.get_board().legal_moves)
         return [
             (chess.square_rank(m.to_square), chess.square_file(m.to_square))
-            for m in all_moves if m.from_square == from_sq
+            for m in all_moves
+            if m.from_square == from_sq
         ]
 
     def convert_to_uci(self, start, end):
         def to_chess(sq):
-            return chr(ord('a') + sq[1]) + str(sq[0] + 1)
+            return chr(ord("a") + sq[1]) + str(sq[0] + 1)
 
         return to_chess(start) + to_chess(end)
 
     def ai_move_if_needed(self):
-        opponent_turn = chess.BLACK if self.player_color == 'white' else chess.WHITE
+        opponent_turn = chess.BLACK if self.player_color == "white" else chess.WHITE
         current_time = pygame.time.get_ticks()
 
         if self.ai_move_pending and self.board.get_board().turn == opponent_turn:
             if current_time - self.last_move_time >= self.ai_move_delay:
-
-                move = get_best_move_alpha_beta(self.board.get_board(), depth=4)
+                move = get_best_move(self.board.get_board(), depth=3)
                 self.board.make_move(move)
-
                 if self.board.get_board().is_check():
                     self.check_sound.play()
 

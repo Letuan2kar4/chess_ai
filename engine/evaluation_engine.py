@@ -1,11 +1,17 @@
-from evaluation.material import eval_material
-from evaluation.psqt import eval_psqt
-from evaluation.imbalance import eval_imbalance
-from evaluation.pawns import eval_pawns
+from engine.evaluation.material import eval_material
+from engine.evaluation.psqt import eval_psqt
+from engine.evaluation.imbalance import eval_imbalance
+from engine.evaluation.pawns import pawns_mg
+from engine.evaluation.pawns import pawns_eg
+
 # === HÀM CHÍNH ===
 
 
 def evaluate_board(board):
+    if board.is_checkmate():
+        return -9999 if board.turn else 9999
+    if board.is_stalemate() or board.is_insufficient_material():
+        return 0  # Hòa cờ
     """
     Hàm đánh giá tổng cho bàn cờ.
     Trả về điểm số, dương có lợi cho trắng, âm có lợi cho đen.
@@ -18,7 +24,7 @@ def evaluate_board(board):
         eval_material(board, phase="mg")
         + eval_psqt(board, phase="mg")
         + eval_imbalance(board)
-        + eval_pawns(board, phase="mg")
+        + pawns_mg(board)
         + eval_pieces(board, phase="mg")
         + eval_mobility(board, phase="mg")
         + eval_threats(board, phase="mg")
@@ -31,7 +37,7 @@ def evaluate_board(board):
         eval_material(board, phase="eg")
         + eval_psqt(board, phase="eg")
         + eval_imbalance(board)
-        + eval_pawns(board, phase="eg")
+        + pawns_eg(board)
         + eval_pieces(board, phase="eg")
         + eval_mobility(board, phase="eg")
         + eval_threats(board, phase="eg")
