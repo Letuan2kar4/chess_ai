@@ -1,7 +1,7 @@
 import chess
 import pygame.mixer
+import threading
 from engine.minimax import get_best_move
-
 
 class GameController:
     def __init__(self, board, gui, player_is_white):
@@ -19,6 +19,10 @@ class GameController:
         self.last_move_time = 0
         self.ai_move_delay = 0
         self.ai_move_pending = False if self.player_is_white else True
+
+        self.ai_thread = None
+        self.ai_move_ready = False
+        self.ai_move_result = None
 
         pygame.mixer.init()
         self.move_sound = pygame.mixer.Sound("assets/sounds/move-self.mp3")
@@ -182,18 +186,33 @@ class GameController:
         opponent_turn = chess.BLACK if self.player_color == "white" else chess.WHITE
         current_time = pygame.time.get_ticks()
 
-        if self.ai_move_pending and self.board.get_board().turn == opponent_turn:
-            if current_time - self.last_move_time >= self.ai_move_delay:
-                move = get_best_move(self.board.get_board(), depth=3)
-                self.board.make_move(move)
-                if self.board.get_board().is_check():
-                    self.check_sound.play()
+        # Khởi động luồng AI nếu cần
+        if self.ai_move_pending and not self.ai_thread:
+            if self.board.get_board().turn == opponent_turn:
+                if current_time - self.last_move_time >= self.ai_move_delay:
+                    self.ai_thread = threading.Thread(target=self.calculate_ai_move)
+                    self.ai_thread.start()
 
-                from_row = chess.square_rank(move.from_square)
-                from_col = chess.square_file(move.from_square)
-                to_row = chess.square_rank(move.to_square)
-                to_col = chess.square_file(move.to_square)
-                self.gui.last_move = (from_row, from_col, to_row, to_col)
+        # Khi AI đã tính xong → thực hiện nước đi
+        if self.ai_move_ready:
+            move = self.ai_move_result
+            self.board.make_move(move)
 
-                self.last_move_time = current_time
-                self.ai_move_pending = False
+            if self.board.get_board().is_check():
+                self.check_sound.play()
+
+            from_row = chess.square_rank(move.from_square)
+            from_col = chess.square_file(move.from_square)
+            to_row = chess.square_rank(move.to_square)
+            to_col = chess.square_file(move.to_square)
+            self.gui.last_move = (from_row, from_col, to_row, to_col)
+
+            self.last_move_time = current_time
+            self.ai_move_pending = False
+            self.ai_thread = None
+            self.ai_move_ready = False
+
+    def calculate_ai_move(self):
+        move = get_best_move(self.board.get_board(), depth=3)
+        self.ai_move_result = move
+        self.ai_move_ready = True
