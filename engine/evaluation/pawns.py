@@ -1,9 +1,15 @@
 import chess
 
 
+def eval_pawns(board, phase):
+    if phase == "mg":
+        return pawns_mg(board)
+    return pawns_eg(board)
+
+
 def pawns_mg(board):
     """
-    Đánh giá đặc trưng pawn trong giai đoạn middle game cho 1 ô.
+    Đánh giá đặc trưng pawn trong giai đoạn middle game.
     Trả về điểm số dựa trên các tiêu chí:
         - doubled_isolated
         - isolated
@@ -17,33 +23,34 @@ def pawns_mg(board):
         piece = board.piece_at(square)
         if not piece or piece.piece_type != chess.PAWN:
             return 0
-
+        file = chess.square_file(square)
+        rank = chess.square_rank(square)
         color = piece.color
         sign = 1 if color == chess.WHITE else -1
         score = 0
 
         # Doubled Isolated
-        if doubled_isolated(board, square):
+        if doubled_isolated(board, color, sign, file, rank):
             score -= sign * 8
         # Isolated
-        elif isolated(board, square):
+        elif isolated(board, color, file, rank):
             score -= sign * 4
         # Backward
-        elif backward(board, square):
+        elif backward(board, color, sign, file, rank):
             score -= sign * 7
 
         # Doubled
-        score -= sign * 8 * doubled(board, square)
+        score -= sign * 8 * doubled(board, color, sign, file, rank)
 
         # Connected
-        if connected(board, square):
-            score += sign * connected_bonus(board, square)
+        if connected(board, piece):
+            score += sign * connected_bonus(board, color, sign, file, rank)
 
         # Weak Unopposed
-        score -= sign * 10 * weak_unopposed_pawn(board, square)
+        score -= sign * 10 * weak_unopposed_pawn(board, color, sign, file, rank)
 
         # Blocked
-        blocked_level = blocked(board, square)  # 0, 1 hoặc 2
+        blocked_level = blocked(board, piece, color, sign, file, rank)  # 0, 1 hoặc 2
         penalties = [0, 8, 2]
         score -= sign * penalties[blocked_level]
 
@@ -71,38 +78,35 @@ def pawns_eg(board):
 
         color = piece.color
         sign = 1 if color == chess.WHITE else -1
-        rank = (
-            chess.square_rank(square)
-            if color == chess.WHITE
-            else 7 - chess.square_rank(square)
-        )
+        file = chess.square_file(square)
+        rank = chess.square_rank(square)
 
         # Doubled Isolated
-        if doubled_isolated(board, square):
+        if doubled_isolated(board, color, sign, file, rank):
             score -= sign * 45
         # Isolated
-        elif isolated(board, square):
+        elif isolated(board, color, file, rank):
             score -= sign * 12
         # Backward
-        elif backward(board, square):
+        elif backward(board, color, sign, file, rank):
             score -= sign * 19
 
         # Doubled
-        score -= sign * 45 * doubled(board, square)
+        score -= sign * 45 * doubled(board, color, sign, file, rank)
 
         # Connected (bonus nhân thêm hệ số tùy rank)
         if connected(board, square):
-            connected_bonus_score = connected_bonus(board, square)
+            connected_bonus_score = connected_bonus(board, color, sign, file, rank)
             score += sign * (connected_bonus_score * (rank - 3) // 4)
 
         # Weak Unopposed
-        score -= sign * 22 * weak_unopposed_pawn(board, square)
+        score -= sign * 22 * weak_unopposed_pawn(board, color, sign, file, rank)
 
         # Weak Lever
-        score -= sign * 45 * weak_lever(board, square)
+        score -= sign * 45 * weak_lever(board, piece, color, sign, file, rank)
 
         # Blocked
-        blocked_level = blocked(board, square)  # 0, 1 hoặc 2
+        blocked_level = blocked(board, piece, color, sign, file, rank)  # 0, 1 hoặc 2
         penalties = [0, -3, 3]
         score += sign * penalties[blocked_level]
 
@@ -112,20 +116,10 @@ def pawns_eg(board):
 # ====== Các hàm thành phần ======
 
 
-def doubled(board, square):
+def doubled(board, color, sign, file, rank):
     """
     Kiểm tra xem Tốt ở ô square có bị doubled (chồng) không.
     """
-    piece = board.piece_at(square)
-    color = piece.color
-    sign = 1 if color == chess.WHITE else -1
-
-    if not piece or piece.piece_type != chess.PAWN:
-        return 0
-
-    file = chess.square_file(square)
-    rank = chess.square_rank(square)
-
     # Kiểm tra ngay trên rank cao hơn
     under_square = chess.square(file, rank - sign)
     if (
@@ -155,17 +149,10 @@ def doubled(board, square):
     return 0
 
 
-def isolated(board, square):
+def isolated(board, color, file, rank):
     """
     Kiểm tra xem Tốt ở ô square có bị isolated (cô lập) không.
     """
-    piece = board.piece_at(square)
-    color = piece.color
-    if not piece or piece.piece_type != chess.PAWN:
-        return 0
-
-    file = chess.square_file(square)
-
     # Kiểm tra toàn bộ file bên trái và bên phải
     for rank in range(8):
         if file > 0:
@@ -188,18 +175,10 @@ def isolated(board, square):
     return 1
 
 
-def backward(board, square):
+def backward(board, color, sign, file, rank):
     """
     Kiểm tra xem Tốt ở ô square có bị backward (tụt hậu) không.
     """
-    piece = board.piece_at(square)
-    color = piece.color
-    sign = 1 if color == chess.WHITE else -1
-    if not piece or piece.piece_type != chess.PAWN:
-        return 0
-
-    file = chess.square_file(square)
-    rank = chess.square_rank(square)
 
     # Kiểm tra từ rank hiện tại trở lên, xem có Tốt bạn hỗ trợ không
     for y in range(1, rank):
@@ -220,7 +199,7 @@ def backward(board, square):
             ):
                 return 0
     # Kiểm tra nếu đường tiến bị quân địch cản
-    enemy_color = not piece.color
+    enemy_color = not color
     front_left = (
         chess.square(file - 1, rank + 2 * sign) if file > 0 and rank + 2 < 7 else None
     )
@@ -238,7 +217,7 @@ def backward(board, square):
     return 0
 
 
-def doubled_isolated(board, square):
+def doubled_isolated(board, color, sign, file, rank):
     """
     Kiểm tra quân tốt ở ô square có phải là doubled isolated pawn không.
     1. Nếu có tốt đồng minh ở file bên trái/phải → Không phải isolated → return 0
@@ -247,14 +226,6 @@ def doubled_isolated(board, square):
     3. Nếu có quân địch ở phía trước: kiểm tra từ vị trí tốt xuống phía sau:
         - Nếu có quân đồng minh ở phía sau ➔ return 1
     """
-    piece = board.piece_at(square)
-    if not piece or piece.piece_type != chess.PAWN:
-        return 0
-
-    color = piece.color
-    file = chess.square_file(square)
-    rank = chess.square_rank(square)
-    sign = 1 if color == chess.WHITE else -1
     enemy_color = not color
 
     # 1. Kiểm tra isolated
@@ -310,18 +281,11 @@ def doubled_isolated(board, square):
     return 0
 
 
-def phalanx(board, square):
+def phalanx(board, color, file, rank):
     """
     Kiểm tra xem Tốt ở ô `square` có tạo thành Phalanx (hàng ngang) không.
     Phalanx xảy ra khi một Tốt có đồng đội ngay bên trái hoặc bên phải cùng rank.
     """
-    piece = board.piece_at(square)
-    if not piece or piece.piece_type != chess.PAWN:
-        return 0
-
-    file = chess.square_file(square)
-    rank = chess.square_rank(square)
-    color = piece.color
 
     # Kiểm tra ô bên trái cùng rank
     if file > 0:
@@ -348,21 +312,12 @@ def phalanx(board, square):
     return 0
 
 
-def supported(board, square):
+def supported(board, color, sign, file, rank):
     """
     Kiểm tra xem Tốt ở ô `square` có được hỗ trợ bởi Tốt khác không.
     Một Tốt được coi là hỗ trợ nếu có đồng minh ở phía sau chéo trái hoặc phải.
     Trả về 0 (không được hỗ trợ), 1 (hỗ trợ một bên), hoặc 2 (hỗ trợ cả hai bên).
     """
-    piece = board.piece_at(square)
-    if not piece or piece.piece_type != chess.PAWN:
-        return 0
-
-    file = chess.square_file(square)
-    rank = chess.square_rank(square)
-    color = piece.color
-    sign = 1 if color == chess.WHITE else -1
-
     count = 0
     if rank < 2 or rank > 6:
         return 0
@@ -384,36 +339,27 @@ def supported(board, square):
     return count
 
 
-def connected(board, square):
+def connected(board, piece):
     """
     Kiểm tra xem Tốt ở ô `square` có được kết nối (connected) không.
     Một Tốt được coi là connected nếu:
     - Có đồng minh hỗ trợ từ chéo sau (supported) hoặc
     - Đứng ngang hàng cùng với một đồng minh khác (phalanx).
     """
-    if not board.piece_at(square):
+    if not piece:
         return 0
 
-    if supported(board, square) or phalanx(board, square):
+    if supported(board, piece) or phalanx(board, piece):
         return 1
 
     return 0
 
 
-def opposed(board, square):
+def opposed(board, color, sign, file, rank):
     """
     Kiểm tra xem Tốt ở ô square có bị opposed (bị đối đầu trực tiếp bởi Tốt đối phương) hay không.
     """
-    piece = board.piece_at(square)
-    if not piece or piece.piece_type != chess.PAWN:
-        return 0
-
-    file = chess.square_file(square)
-    rank = chess.square_rank(square)
-
-    color = piece.color
     enemy_color = not color
-    sign = 1 if color == chess.WHITE else -1
     start = rank + sign
     end = 8 if sign == 1 else -1
 
@@ -428,7 +374,7 @@ def opposed(board, square):
     return 0
 
 
-def connected_bonus(board, square):
+def connected_bonus(board, color, sign, file, rank):
     """
     Tính điểm thưởng cho Tốt được kết nối (connected).
     Dựa vào:
@@ -436,15 +382,9 @@ def connected_bonus(board, square):
     - Các yếu tố: supported, phalanx, opposed.
     - Nếu không connected thì trả 0.
     """
-    if not board.piece_at(square):
-        return 0
 
-    if not connected(board, square):
+    if not connected(board, color, sign, file, rank):
         return 0
-
-    piece = board.piece_at(square)
-    color = piece.color
-    rank = chess.square_rank(square)
 
     # Seed bảng theo rank (bắt đầu từ rank 1)
     seed = [0, 7, 8, 12, 29, 48, 86]
@@ -453,51 +393,42 @@ def connected_bonus(board, square):
     if color == chess.BLACK:
         rank = 7 - rank  # Lật rank lại cho đen (do bên stockfish là từ trên xuống)
 
-    op = opposed(board, square)
-    ph = phalanx(board, square)
-    su = supported(board, square)
+    op = opposed(board, color, sign, file, rank)
+    ph = phalanx(board, color, file, rank)
+    su = supported(board, color, sign, file, rank)
 
     bonus = seed[rank] * (2 + ph - op) + 21 * su
 
     return bonus
 
 
-def weak_unopposed_pawn(board, square):
+def weak_unopposed_pawn(board, color, sign, file, rank):
     """
     Kiểm tra xem Tốt ở ô square có là weak unopposed pawn không:
     - Không bị đối đầu (opposed == 0)
     - Và bị cô lập (isolated) hoặc tụt hậu (backward)
     """
-    piece = board.piece_at(square)
-    if not piece or piece.piece_type != chess.PAWN:
+    if opposed(board, color, sign, file, rank):
         return 0
 
-    if opposed(board, square):
-        return 0
-
-    if isolated(board, square):
+    if isolated(board, color, file, rank):
         return 1
-    elif backward(board, square):
+    elif backward(board, color, sign, file, rank):
         return 1
 
     return 0
 
 
-def blocked(board, square):
+def blocked(board, piece, color, sign, file, rank):
     """
     Trả về:
         2 nếu tốt ở hàng 6 (WHITE) hoặc hàng 3 (BLACK) bị chặn bởi tốt địch ngay phía trước
         1 nếu tốt ở hàng 5 (WHITE) hoặc hàng 4 (BLACK) bị chặn tương tự
         0 nếu không bị chặn hoặc không thuộc các hàng trên
     """
-    piece = board.piece_at(square)
     if not piece or piece.piece_type != chess.PAWN:
         return 0
 
-    file = chess.square_file(square)
-    rank = chess.square_rank(square)
-    color = piece.color
-    sign = 1 if color == chess.WHITE else -1
     if rank in [3 + sign, 4 + sign]:  # hàng 5 và 6
         front_square = chess.square(file, rank + sign)
         blocker = board.piece_at(front_square)
@@ -511,21 +442,16 @@ def blocked(board, square):
     return 0
 
 
-def weak_lever(board, square):
+def weak_lever(board, piece, color, sign, file, rank):
     """
     Trả về 1 nếu tốt ở 'square' bị 'weak lever':
     - Bị tấn công bởi 2 tốt địch từ phía TRƯỚC (chéo)
     - Không có tốt đồng minh ở phía SAU (chéo)
     """
-    piece = board.piece_at(square)
     if not piece or piece.piece_type != chess.PAWN:
         return 0
 
-    color = piece.color
     enemy_color = not color
-    file = chess.square_file(square)
-    rank = chess.square_rank(square)
-    sign = 1 if color == chess.WHITE else -1
 
     # Tốt địch tấn công từ phía trước
     enemies = []

@@ -35,7 +35,7 @@ PST_EG = {
 }
 
 
-def eval_psqt(board, phase="mg"):
+def eval_psqt(board, phase):
     """
     Đánh giá Piece-Square Table (PSQT) cho bàn cờ hiện tại, theo phase middle game (mg) hoặc end game (eg).
     """
