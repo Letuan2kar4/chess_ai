@@ -3,8 +3,9 @@ from engine.evaluation.material import eval_material
 from engine.evaluation.psqt import eval_psqt
 from engine.evaluation.imbalance import eval_imbalance
 from engine.evaluation.pawns import eval_pawns
-from engine.evaluation.mobility import eval_mobility_mg, eval_mobility_eg
+from engine.evaluation.mobility import eval_mobility
 from engine.evaluation.king import eval_king_safety_mg, eval_king_safety_eg
+from engine.evaluation.pieces import eval_pieces
 
 # === HÀM CHÍNH ===
 
@@ -28,11 +29,9 @@ def evaluate_board(board):
         + eval_imbalance(board)
         + eval_pawns(board, phase="mg")
         + eval_pieces(board, phase="mg")
-        + eval_mobility_mg(board, phase="mg")
-        + eval_threats(board, phase="mg")
-        + eval_passed_pawns(board, phase="mg")
+        + eval_mobility(board, phase="mg")
+        ##+ eval_threats(board, phase="mg")
         + eval_king_safety_mg(board)
-        + eval_space(board)
     )  # chỉ MG mới có
 
     eg_score = (
@@ -41,9 +40,8 @@ def evaluate_board(board):
         + eval_imbalance(board)
         + eval_pawns(board, phase="eg")
         + eval_pieces(board, phase="eg")
-        + eval_mobility_eg(board, phase="eg")
-        + eval_threats(board, phase="eg")
-        + eval_passed_pawns(board, phase="eg")
+        + eval_mobility(board, phase="eg")
+        ##+ eval_threats(board, phase="eg")
         + eval_king_safety_eg(board)
     )
     # Endgame không có Space
@@ -51,40 +49,7 @@ def evaluate_board(board):
     # 3. Blend middle game và end game theo phase
     blended_score = int(mg_score * phase + eg_score * (1 - phase))
 
-    # 4. Thêm bonus tempo (nước đi)
-    blended_score += eval_tempo(board)
-
-    # 5. Điều chỉnh theo rule50 (50-move rule)
-    blended_score = int(blended_score * (100 - rule50(board)) / 100)
-
     return blended_score
-
-
-# ====== HÀM STUB (chưa viết) ======
-
-
-def eval_pieces(board, phase="mg"):
-    return 0
-
-
-def eval_threats(board, phase="mg"):
-    return 0
-
-
-def eval_passed_pawns(board, phase="mg"):
-    return 0
-
-
-def eval_space(board):
-    return 0
-
-
-def eval_tempo(board):
-    return 0
-
-
-def rule50(board):
-    return 0
 
 
 def non_pawn_material(board) -> int:

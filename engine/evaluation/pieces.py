@@ -31,14 +31,14 @@ def eval_pieces_mg(board):
         )
         v += sign * 14 * minor_behind_pawn(board, piece, color, sign, rank, file)
         v -= sign * 2 * bishop_pawns(board, piece, color, sign, rank, file)
-        v -= sign * 3 * bishop_xray_pawns(board, piece, color, sign, rank, file)
-        v += sign * 4 * rook_on_queen_file(board, piece, color, sign, rank, file)
-        v += sign * 12 * rook_on_king_ring(board, piece, color, sign, rank, file)
-        v += sign * 19 * bishop_on_king_ring(board, piece, color, sign, rank, file)
-        v += sign * [0, 15, 38][rook_on_file(board, piece, color, sign, rank, file)]
+        v -= sign * 3 * bishop_xray_pawns(board, piece, color, rank, file)
+        v += sign * 4 * rook_on_queen_file(board, piece, file)
+        v += sign * 12 * rook_on_king_ring(board, piece, color, rank, file)
+        v += sign * 19 * bishop_on_king_ring(board, piece, color, rank, file)
+        v += sign * [0, 15, 38][rook_on_file(board, piece, color, file)]
         v -= (
             sign
-            * trapped_rook(board, square)
+            * trapped_rook(board, piece, color, rank, file)
             * 44
             * (
                 1
@@ -49,15 +49,77 @@ def eval_pieces_mg(board):
                 else 2
             )
         )
-        v -= sign * 45 * weak_queen(board, square)
-        v -= sign * 1 * queen_infiltration(board, square)
+        v -= sign * 45 * weak_queen(board, piece, color, rank, file)
+        v -= sign * 1 * queen_infiltration(board, piece, color, sign, rank, file)
 
         if piece.piece_type == chess.KNIGHT:
-            v -= sign * 6 * king_protector(board, square)
+            v -= sign * 6 * king_protector(board, piece, color, rank, file)
         else:
-            v -= sign * 4 * king_protector(board, square)
+            v -= sign * 4 * king_protector(board, piece, color, rank, file)
 
-        v += sign * 36 * long_diagonal_bishop(board, square)
+        v += sign * 36 * long_diagonal_bishop(board, piece, rank, file)
+
+        total += v
+
+    return total
+
+
+def eval_pieces_eg(board):
+    """
+    Đánh giá đặc trưng của quân NBRQ trong giai đoạn endgame.
+    Trả về tổng điểm cho cả hai bên: trắng dương, đen âm.
+    """
+    total = 0
+    for square, piece in board.piece_map().items():
+        if piece.piece_type not in (
+            chess.KNIGHT,
+            chess.BISHOP,
+            chess.ROOK,
+            chess.QUEEN,
+        ):
+            continue
+
+        rank = chess.square_rank(square)
+        file = chess.square_file(square)
+        color = piece.color
+        sign = 1 if color == chess.WHITE else -1
+
+        v = 0
+        # Outpost (EG)
+        v += (
+            sign
+            * [0, 17, 29, 18, 29][outpost_total(board, piece, color, sign, rank, file)]
+        )
+        # Minor behind pawn
+        v += sign * 2 * minor_behind_pawn(board, piece, color, sign, rank, file)
+        # Bishop pawns
+        v -= sign * 5 * bishop_pawns(board, piece, color, sign, rank, file)
+        # Bishop xray pawns
+        v -= sign * 4 * bishop_xray_pawns(board, piece, color, rank, file)
+        # Rook on queen file
+        v += sign * 8 * rook_on_queen_file(board, piece, file)
+        # Rook on file (EG)
+        v += sign * [0, 5, 23][rook_on_file(board, piece, color, file)]
+        # Trapped rook
+        v -= (
+            sign
+            * trapped_rook(board, piece, color, rank, file)
+            * 10
+            * (
+                1
+                if (
+                    board.has_castling_rights(chess.WHITE)
+                    or board.has_castling_rights(chess.BLACK)
+                )
+                else 2
+            )
+        )
+        # Weak queen
+        v -= sign * 12 * weak_queen(board, piece, color, rank, file)
+        # Queen infiltration
+        v += sign * 11 * queen_infiltration(board, piece, color, sign, rank, file)
+        # King protector
+        v -= sign * 7 * king_protector(board, piece, color, rank, file)
 
         total += v
 
@@ -271,7 +333,8 @@ def bishop_pawns(board, piece, color, sign, rank, file):
 
     return v * (blocked + (0 if support else 1))
 
-def rook_on_file(board, piece, color, file)
+
+def rook_on_file(board, piece, color, file):
     """
     Đánh giá cột xe đang đứng:
     - 2: cột hoàn toàn mở (không có pawn nào ở cột đó)
@@ -297,7 +360,7 @@ def rook_on_file(board, piece, color, file)
     return open_file + 1
 
 
-def trapped_rook(board,piece,color,sign,rank,file):
+def trapped_rook(board, piece, color, rank, file):
     """
     Trả về 1 nếu Rook của bên `color` trên ô (file, rank) đang bị giam:
     - Không đứng trên cột semi-open/open (rook_on_file == 0)
@@ -310,14 +373,13 @@ def trapped_rook(board,piece,color,sign,rank,file):
         return 0
 
     # 2) Nếu đang trên cột semi-open/open → không trapped
-    if rook_on_file(board, piece, color, sign, rank, file) > 0:
+    if rook_on_file(board, piece, color, file) > 0:
         return 0
 
-    
     # 3) Đếm số nước đi hợp lệ của xe
     mobility_count = 0
     directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # up, down, right, left
-    
+
     for dx, dy in directions:
         next_file, next_rank = file, rank
         while True:
@@ -325,17 +387,17 @@ def trapped_rook(board,piece,color,sign,rank,file):
             next_rank += dy
             if not (0 <= next_file <= 7 and 0 <= next_rank <= 7):
                 break
-                
+
             next_square = chess.square(next_file, next_rank)
             piece_at = board.piece_at(next_square)
-            
+
             if piece_at is None:
                 mobility_count += 1
             else:
                 if piece_at.color != color:
                     mobility_count += 1
                 break
-    
+
     if mobility_count > 3:
         return 0
 
@@ -353,7 +415,8 @@ def trapped_rook(board,piece,color,sign,rank,file):
     # 6) Thỏa các điều kiện → Rook bị giam
     return 1
 
-def weak_queen(board, piece, color, rank, file)
+
+def weak_queen(board, piece, color, rank, file):
     if not piece or piece.piece_type != chess.QUEEN:
         return 0
 
@@ -397,7 +460,9 @@ def weak_queen(board, piece, color, rank, file)
                         return 1
                 count += 1
     return 0
-def long_diagonal_bishop(board, piece, color, rank, file):
+
+
+def long_diagonal_bishop(board, piece, rank, file):
     if not piece or piece.piece_type != chess.BISHOP:
         return 0
 
@@ -429,3 +494,175 @@ def long_diagonal_bishop(board, piece, color, rank, file):
 
     # Nếu tới target và không bị chặn
     return 1
+
+
+def rook_on_queen_file(board, piece, file):
+    """
+    Trả về 1 nếu quân Xe (Rook) đứng cùng cột với bất kỳ quân Hậu (Queen) nào.
+    Ngược lại trả về 0.
+    """
+    if not piece or piece.piece_type != chess.ROOK:
+        return 0
+
+    for r in range(8):
+        sq = chess.square(file, r)
+        p = board.piece_at(sq)
+        if p and p.piece_type == chess.QUEEN:
+            return 1
+
+    return 0
+
+
+def bishop_xray_pawns(board, piece, color, rank, file):
+    if not piece or piece.piece_type != chess.BISHOP:
+        return 0
+
+    enemy_color = not color
+    count = 0
+
+    directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+
+    for dx, dy in directions:
+        x, y = file + dx, rank + dy
+        while 0 <= x <= 7 and 0 <= y <= 7:
+            sq = chess.square(x, y)
+            p = board.piece_at(sq)
+            if p:
+                if p.piece_type == chess.PAWN and p.color == enemy_color:
+                    count += 1
+            x += dx
+            y += dy
+
+    return count
+
+
+def rook_on_king_ring(board, piece, color, rank, file):
+    """
+    Trả về 1 nếu quân xe đang đứng cùng cột với một ô thuộc King Ring của vua địch,
+    không chiếu vua, và có một quân cản (không phải R, Q, K) nằm giữa xe và vua,
+    trong phạm vi các rank nhất định.
+    Ngược lại trả về 0.
+    """
+    if not piece or piece.piece_type != chess.ROOK or piece.color != color:
+        return 0
+
+    enemy_color = not color
+
+    # 1) Nếu xe đang chiếu vua địch → không tính điểm
+    if board.is_check():
+        return 0
+
+    # 2) Lấy vị trí vua địch
+    king_square = board.king(enemy_color)
+    if king_square is None:
+        return 0
+
+    king_rank = chess.square_rank(king_square)
+    king_file = chess.square_file(king_square)
+
+    # 3) Nếu không cùng cột hoặc cột lệch >1 (không thuộc ring) → loại
+    if abs(king_file - file) > 1:
+        return 0
+
+    # 4) Duyệt từ rook đến king, tính hướng đi và vùng hợp lệ
+    step = 1 if rank < king_rank else -1
+
+    # Quân cản chỉ tính nếu nó nằm trong các rank này:
+    valid_ranks = set(range(0, 5)) if step == 1 else set(range(3, 8))
+
+    for r in range(rank + step, king_rank, step):
+        sq = chess.square(file, r)
+        if r not in valid_ranks:
+            continue
+        blocker = board.piece_at(sq)
+        if blocker:
+            if blocker.piece_type not in (chess.ROOK, chess.QUEEN, chess.KING):
+                return 1
+            else:
+                break  # nếu cản bởi R/Q/K thì loại
+    return 0
+
+
+def bishop_on_king_ring(board, piece, color, rank, file):
+    if not piece or piece.piece_type != chess.BISHOP or piece.color != color:
+        return 0
+
+    enemy_color = not color
+    king_sq = board.king(enemy_color)
+    if king_sq is None:
+        return 0
+
+    king_file = chess.square_file(king_sq)
+    king_rank = chess.square_rank(king_sq)
+
+    directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+    for dx, dy in directions:
+        x, y = file + dx, rank + dy
+        blocker_found = False
+
+        while 0 <= x <= 7 and 0 <= y <= 7:
+            sq = chess.square(x, y)
+
+            if abs(x - king_file) <= 1 and abs(y - king_rank) <= 1:
+                if blocker_found:
+                    return 1
+                else:
+                    break
+
+            piece_at = board.piece_at(sq)
+            if piece_at:
+                if blocker_found:
+                    break
+
+                if piece_at.piece_type in (chess.QUEEN, chess.PAWN):
+                    break
+
+                if board.is_attacked_by(enemy_color, sq):
+                    break
+
+                blocker_found = True
+
+            x += dx
+            y += dy
+
+    return 0
+
+
+def queen_infiltration(board, piece, color, sign, rank, file):
+    if not piece or piece.piece_type != chess.QUEEN or piece.color != color:
+        return 0
+
+    if (color == chess.WHITE and rank < 4) or (color == chess.BLACK and rank > 3):
+        return 0
+
+    enemy_color = not color
+
+    for df in [-1, 1]:
+        f = file + df
+        r = rank + sign
+        while 0 <= f < 8 and 0 <= r < 8:
+            sq = chess.square(f, r)
+            p = board.piece_at(sq)
+            if p and p.piece_type == chess.PAWN and p.color == enemy_color:
+                return 0
+            r += sign
+
+    return 1
+
+
+def king_protector(board, piece, color, rank, file):
+    """
+    Trả về khoảng cách Chebyshev từ mã (N) hoặc tượng (B) đến vua cùng màu.
+    Các quân khác sẽ trả về 0.
+    """
+    if not piece or piece.piece_type not in (chess.KNIGHT, chess.BISHOP):
+        return 0
+
+    king_sq = board.king(color)
+    if king_sq is None:
+        return 0
+
+    king_rank = chess.square_rank(king_sq)
+    king_file = chess.square_file(king_sq)
+
+    return max(abs(rank - king_rank), abs(file - king_file))

@@ -135,3 +135,11 @@ def eval_mobility_mg(board: chess.Board) -> int:
 
 def eval_mobility_eg(board: chess.Board) -> int:
     return eval_mobility(board, MOBILITY_BONUS["EG"])
+
+
+def eval_mobility(board, phase):
+    """
+    Hàm đánh giá mobility cho bàn cờ.
+    Trả về điểm số, dương có lợi cho trắng, âm có lợi cho đen.
+    """
+    return eval_mobility_mg(board) if phase == "mg" else eval_mobility_eg(board)
