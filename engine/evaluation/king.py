@@ -65,40 +65,80 @@ def king_danger(board, square):
 
 
 def eval_king_safety_mg(board):
-    """
-    Tính điểm an toàn vua giai đoạn giữa trận.
-    Trả về tổng: trắng dương, đen âm.
-    """
     total = 0
     for color in (chess.WHITE, chess.BLACK):
         sign = 1 if color == chess.WHITE else -1
-        sq = board.king(color)
-        # -shelter + (kd^2)//4096 + flank*8 + pawnless*int(17/1.24)
-        mg = (
-            -shelter_strength(board, sq)
-            + (king_danger(board, sq) ** 2) // 4096
-            + flank_attack(board, sq) * 8
-            + pawnless_flank(board, sq) * int(17 / 1.24)
-        )
-        total += sign * mg
+        king_sq = board.king(color)
+        if king_sq is None:
+            continue
+
+        rank = chess.square_rank(king_sq)
+        file = chess.square_file(king_sq)
+
+        # Điểm cộng nếu có tốt gần vua
+        shield_bonus = 0
+        direction = 1 if color == chess.WHITE else -1
+        for df in [-1, 0, 1]:
+            f = file + df
+            r = rank + direction
+            if 0 <= f <= 7 and 0 <= r <= 7:
+                sq = chess.square(f, r)
+                piece = board.piece_at(sq)
+                if piece and piece.piece_type == chess.PAWN and piece.color == color:
+                    shield_bonus += 15  # Có tốt che
+
+        # Điểm trừ nếu bị tấn công gần vua
+        attackers_penalty = len(board.attackers(not color, king_sq)) * 20
+
+        # Có tốt ở cánh vua không?
+        pawnless = 1
+        for df in [-1, 0, 1]:
+            f = file + df
+            if 0 <= f <= 7:
+                for r in range(1, 7):
+                    sq = chess.square(f, r)
+                    p = board.piece_at(sq)
+                    if p and p.piece_type == chess.PAWN and p.color == color:
+                        pawnless = 0
+                        break
+
+        total += sign * (shield_bonus - attackers_penalty + pawnless * 20)
     return total
+
 
 
 def eval_king_safety_eg(board):
-    """
-    Tính điểm an toàn vua giai đoạn tàn cuộc.
-    Trả về tổng: trắng dương, đen âm.
-    """
     total = 0
     for color in (chess.WHITE, chess.BLACK):
         sign = 1 if color == chess.WHITE else -1
-        sq = board.king(color)
-        # -int(16/1.24)*distance + (kd//16) + pawnless*int(95/1.24)
-        dist = chess.square_distance(sq, board.king(not color))
-        eg = (
-            -int(16 / 1.24) * dist
-            + king_danger(board, sq) // 16
-            + pawnless_flank(board, sq) * int(95 / 1.24)
-        )
-        total += sign * eg
+        king_sq = board.king(color)
+        opp_king_sq = board.king(not color)
+        if king_sq is None or opp_king_sq is None:
+            continue
+
+        # Khoảng cách giữa 2 vua → càng gần càng tốt
+        dist = chess.square_distance(king_sq, opp_king_sq)
+
+        # Điểm trừ nếu vua cách xa đối thủ
+        dist_penalty = dist * 8  # hệ số nhẹ để tránh mất tempo
+
+        # Điểm trừ nếu bị tấn công
+        danger_penalty = len(board.attackers(not color, king_sq)) * 10
+
+        # Phạt nếu thiếu tốt ở cánh quanh vua
+        file = chess.square_file(king_sq)
+        pawnless = 1
+        for df in [-1, 0, 1]:
+            f = file + df
+            if 0 <= f <= 7:
+                for r in range(1, 7):
+                    sq = chess.square(f, r)
+                    p = board.piece_at(sq)
+                    if p and p.piece_type == chess.PAWN and p.color == color:
+                        pawnless = 0
+                        break
+
+        total += sign * (-dist_penalty - danger_penalty + pawnless * 30)
     return total
+
+
