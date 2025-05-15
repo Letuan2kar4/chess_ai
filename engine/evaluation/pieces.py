@@ -280,10 +280,13 @@ def minor_behind_pawn(board, piece, color, sign, rank, file):
     """
     if piece.piece_type not in (chess.KNIGHT, chess.BISHOP):
         return 0
-    pawn_square = chess.square(file, rank + sign)
-    pawn_piece = board.piece_at(pawn_square)
-    if pawn_piece and pawn_piece.piece_type == chess.PAWN and pawn_piece.color == color:
-        return 1
+    # Prevent out-of-bounds access
+    new_rank = rank + sign
+    if 0 <= file <= 7 and 0 <= new_rank <= 7:
+        pawn_square = chess.square(file, new_rank)
+        pawn_piece = board.piece_at(pawn_square)
+        if pawn_piece and pawn_piece.piece_type == chess.PAWN and pawn_piece.color == color:
+            return 1
     return 0
 
 

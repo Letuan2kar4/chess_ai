@@ -106,15 +106,12 @@ def _mobility_count(board: chess.Board, square: chess.Square) -> int:
         cnt += 1
     return cnt
 
-
-# --- 2. Lấy bonus từ 1 bảng cụ thể và chia 1.24 ---
 def _mobility_bonus(count: int, table: list[int]) -> int:
     idx = min(count, len(table) - 1)
     return int(table[idx] / 1.24)
 
-
-# === 3. Hàm generic: truyền bảng vào ===
-def eval_mobility(
+# === Core evaluation function ===
+def _eval_mobility(
     board: chess.Board, bonus_table: dict[chess.PieceType, list[int]]
 ) -> int:
     total = 0
@@ -127,19 +124,19 @@ def eval_mobility(
                 total += sign * bonus
     return total
 
-
-# === 4. Wrapper cho gọn ===
+# === Phase-specific wrappers ===
 def eval_mobility_mg(board: chess.Board) -> int:
-    return eval_mobility(board, MOBILITY_BONUS["MG"])
-
+    return _eval_mobility(board, MOBILITY_BONUS["MG"])
 
 def eval_mobility_eg(board: chess.Board) -> int:
-    return eval_mobility(board, MOBILITY_BONUS["EG"])
-
+    return _eval_mobility(board, MOBILITY_BONUS["EG"])
 
 def eval_mobility(board, phase):
     """
     Hàm đánh giá mobility cho bàn cờ.
     Trả về điểm số, dương có lợi cho trắng, âm có lợi cho đen.
     """
-    return eval_mobility_mg(board) if phase == "mg" else eval_mobility_eg(board)
+    if phase == "mg":
+        return eval_mobility_mg(board)
+    else:
+        return eval_mobility_eg(board)
