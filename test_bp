@@ -1,0 +1,104 @@
+import chess
+import unittest
+
+
+def bishop_pawns(board, piece, color, sign, rank, file):
+    """
+    Đánh giá số lượng tốt ảnh hưởng đến hoạt động của tượng,
+    đồng thời debug in ra nội dung:
+    - v       = số pawn cùng phe cùng màu ô
+    - blocked = số pawn cùng phe ở cột c–f bị chặn
+    - support = True/False (có pawn bảo kê chéo sau không)
+    """
+    if not piece or piece.piece_type != chess.BISHOP:
+        return 0
+
+    # tính v và blocked
+    c = (file + rank) % 2
+    v = 0
+    blocked = 0
+    for x in range(8):
+        for y in range(8):
+            sq = chess.square(x, y)
+            p = board.piece_at(sq)
+            if not p or p.piece_type != chess.PAWN or p.color != color:
+                continue
+
+            if (x + y) % 2 == c:
+                v += 1
+
+            if 1 <= x <= 6:
+                ahead_rank = y + sign
+                if 0 <= ahead_rank <= 7:
+                    ahead_sq = chess.square(x, ahead_rank)
+                    if board.piece_at(ahead_sq):
+                        blocked += 1
+
+    # kiểm tra support
+    support = False
+    back_rank = rank - sign
+    for df in (-1, +1):
+        f = file + df
+        if 0 <= f < 8 and 0 <= back_rank < 8:
+            sq = chess.square(f, back_rank)
+            p = board.piece_at(sq)
+            if p and p.piece_type == chess.PAWN and p.color == color:
+                support = True
+                break
+
+    # ** debug print **
+    print(
+        f"[DEBUG] bishop_pawns @ {chess.square_name(chess.square(file, rank))}: "
+        f"v={v}, blocked={blocked}, support={support}"
+    )
+
+    # trả về score như cũ
+    return v * (blocked + (0 if support else 1))
+
+
+def bishop_pawns_from_fen(fen: str, square: chess.Square, expected: int) -> str:
+    board = chess.Board(fen)
+    piece = board.piece_at(square)
+    if piece is None:
+        return f"❌ No piece at {chess.square_name(square)}"
+    color = piece.color
+    sign = 1 if color == chess.WHITE else -1
+    rank = chess.square_rank(square)
+    file = chess.square_file(square)
+    result = bishop_pawns(board, piece, color, sign, rank, file)
+    status = "✅" if result == expected else "❌"
+    return f"[{status}] {chess.square_name(square)} | {piece.symbol()} | result = {result} | expected = {expected} | FEN = {fen}"
+
+
+class TestBishopPawnsAccurate(unittest.TestCase):
+    def test_tricky_cases(self):
+        cases = [
+            # desc, FEN, square, expected(v,blocked,support, result)
+            (
+                "no pawn",
+                "8/5p2/4B3/8/3P4/3P4/3P4/8 b - - 1 1",
+                chess.E6,
+                (1, 2, False, 3),
+            ),
+        ]
+        for i, (desc, fen, sq, (v, blocked, support, exp)) in enumerate(cases, 1):
+            b = chess.Board(fen)
+            piece = b.piece_at(sq)
+            color = piece.color if piece else None
+            sign = 1 if color == chess.WHITE else -1
+            rank = chess.square_rank(sq)
+            file = chess.square_file(sq)
+
+            # capture intermediate for assertion
+            # recompute internally to check v, blocked, support
+            # but here we'll just assert final
+            res = bishop_pawns(b, piece, color, sign, rank, file)
+            self.assertEqual(
+                res,
+                exp,
+                f"Case #{i} «{desc}»: v={v}, blocked={blocked}, support={support} → expected {exp}, got {res}",
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()

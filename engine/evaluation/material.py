@@ -20,7 +20,7 @@ PIECE_VALUES_EG = {
 }
 
 
-def eval_material(board, phase="mg"):
+def eval_material(board, phase):
     """
     Tính tổng điểm vật chất trên bàn cờ.
     Phase = 'mg' (middle game) hoặc 'eg' (end game).
